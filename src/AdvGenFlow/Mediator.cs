@@ -18,24 +18,22 @@ public sealed class Mediator : IMediator
 
         // Resolve behaviors via reflection — each is object, wrapped dynamically
         var behaviorType = typeof(IPipelineBehavior<,>).MakeGenericType(requestType, typeof(TResponse));
-        var behaviorObjects = _serviceProvider.GetServices(behaviorType).Where(b => b != null).Cast<object>().ToList();
+        var behaviorObjects = _serviceProvider.GetServices(behaviorType).ToList();
 
-        // Terminal delegate: invoke handler.Handle via interface MethodInfo
-        var handleMethod = handlerType.GetMethod("Handle")!;
+        // Terminal delegate: invoke handler.Handle via dynamic
         RequestHandlerDelegate<TResponse> terminal =
-            () => (Task<TResponse>)handleMethod.Invoke(handler, [request, cancellationToken])!;
+            () => (Task<TResponse>)((dynamic)handler).Handle((dynamic)request, cancellationToken);
 
         if (behaviorObjects.Count == 0)
             return terminal();
 
-        // Compose pipeline dynamically: each behavior is object, invoke Handle via interface MethodInfo
-        var behaviorHandleMethod = behaviorType.GetMethod("Handle")!;
+        // Compose pipeline dynamically: each behavior is object, wrap via dynamic
         RequestHandlerDelegate<TResponse> composed = behaviorObjects
             .Reverse<object>()
             .Aggregate(terminal, (next, behavior) =>
             {
                 var capturedNext = next;
-                return () => (Task<TResponse>)behaviorHandleMethod.Invoke(behavior, [request, capturedNext, cancellationToken])!;
+                return () => (Task<TResponse>)((dynamic)behavior).Handle((dynamic)request, capturedNext, cancellationToken);
             });
 
         return composed();

@@ -5,16 +5,25 @@ using Xunit;
 
 namespace AdvGenFlow.Tests;
 
+public record PingCommand(string Message) : IRequest<string>;
+
+public class PingHandler : IRequestHandler<PingCommand, string>
+{
+    public Task<string> Handle(PingCommand request, CancellationToken cancellationToken)
+        => Task.FromResult($"pong:{request.Message}");
+}
+
+public class CapturingHandler(Action<CancellationToken> capture) : IRequestHandler<PingCommand, string>
+{
+    public Task<string> Handle(PingCommand request, CancellationToken cancellationToken)
+    {
+        capture(cancellationToken);
+        return Task.FromResult("ok");
+    }
+}
+
 public class SenderTests
 {
-    private record PingCommand(string Message) : IRequest<string>;
-
-    private class PingHandler : IRequestHandler<PingCommand, string>
-    {
-        public Task<string> Handle(PingCommand request, CancellationToken cancellationToken)
-            => Task.FromResult($"pong:{request.Message}");
-    }
-
     private static ISender BuildSender(Action<IServiceCollection>? configure = null)
     {
         var services = new ServiceCollection();
@@ -61,14 +70,5 @@ public class SenderTests
         await sender.Send(new PingCommand("x"), cts.Token);
 
         capturedToken.Should().Be(cts.Token);
-    }
-
-    private class CapturingHandler(Action<CancellationToken> capture) : IRequestHandler<PingCommand, string>
-    {
-        public Task<string> Handle(PingCommand request, CancellationToken cancellationToken)
-        {
-            capture(cancellationToken);
-            return Task.FromResult("ok");
-        }
     }
 }
