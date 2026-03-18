@@ -13,7 +13,7 @@
     <PackageReference Include="Verify.SourceGenerators" Version="*" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.*" />
     <ProjectReference Include="../../src/AdvGenFlow/AdvGenFlow.csproj" />
-    <!-- Reference SourceGen as a project (for tests), NOT as an analyzer -->
+    <!-- Load SourceGen as a Roslyn analyzer/generator rather than as a direct assembly reference -->
     <ProjectReference Include="../../src/AdvGenFlow.SourceGen/AdvGenFlow.SourceGen.csproj"
                       OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
