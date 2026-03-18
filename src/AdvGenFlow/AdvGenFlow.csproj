@@ -8,4 +8,9 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.*" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.*" />
   </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>AdvGenFlow.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
 </Project>
