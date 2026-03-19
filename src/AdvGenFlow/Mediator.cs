@@ -54,6 +54,9 @@ public sealed class Mediator : IMediator
     public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        var requestType = request.GetType();
+        var handlerType = typeof(IStreamRequestHandler<,>).MakeGenericType(requestType, typeof(TResponse));
+        var handler = _serviceProvider.GetRequiredService(handlerType);
+        return (IAsyncEnumerable<TResponse>)((dynamic)handler).Handle((dynamic)request, cancellationToken);
     }
 }
