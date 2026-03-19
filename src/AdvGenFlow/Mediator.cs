@@ -43,7 +43,12 @@ public sealed class Mediator : IMediator
         CancellationToken cancellationToken = default)
         where TNotification : INotification
     {
-        throw new NotImplementedException();
+        var handlers = _serviceProvider.GetServices<INotificationHandler<TNotification>>();
+        return Task.WhenAll(handlers.Select(h =>
+        {
+            try { return h.Handle(notification, cancellationToken); }
+            catch (Exception ex) { return Task.FromException(ex); }
+        }));
     }
 
     public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request,
