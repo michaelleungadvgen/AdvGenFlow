@@ -6,10 +6,10 @@ using Xunit;
 namespace AdvGenFlow.Tests;
 
 // Must be public for end-to-end Send test (dynamic dispatch cross-assembly)
-public record TestRequest(int Value) : IRequest<int>;
-public class TestRequestHandler : IRequestHandler<TestRequest, int>
+public record DependencyInjectionTestRequest(int Value) : IRequest<int>;
+public class DependencyInjectionTestRequestHandler : IRequestHandler<DependencyInjectionTestRequest, int>
 {
-    public Task<int> Handle(TestRequest request, CancellationToken cancellationToken)
+    public Task<int> Handle(DependencyInjectionTestRequest request, CancellationToken cancellationToken)
         => Task.FromResult(request.Value * 2);
 }
 
@@ -63,8 +63,8 @@ public class DependencyInjectionTests
         services.AddAdvGenFlow(typeof(DependencyInjectionTests).Assembly);
         var sp = services.BuildServiceProvider();
 
-        sp.GetService<IRequestHandler<TestRequest, int>>().Should().NotBeNull()
-            .And.BeOfType<TestRequestHandler>();
+        sp.GetService<IRequestHandler<DependencyInjectionTestRequest, int>>().Should().NotBeNull()
+            .And.BeOfType<DependencyInjectionTestRequestHandler>();
     }
 
     [Fact]
@@ -97,8 +97,8 @@ public class DependencyInjectionTests
         services.AddAdvGenFlowBehavior(typeof(TestOpenBehavior<,>));
         var sp = services.BuildServiceProvider();
 
-        sp.GetServices<IPipelineBehavior<TestRequest, int>>().Should().ContainSingle()
-            .Which.Should().BeOfType<TestOpenBehavior<TestRequest, int>>();
+        sp.GetServices<IPipelineBehavior<DependencyInjectionTestRequest, int>>().Should().ContainSingle()
+            .Which.Should().BeOfType<TestOpenBehavior<DependencyInjectionTestRequest, int>>();
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public class DependencyInjectionTests
         services.AddAdvGenFlow(typeof(DependencyInjectionTests).Assembly);
         var sender = services.BuildServiceProvider().GetRequiredService<ISender>();
 
-        var result = await sender.Send(new TestRequest(21));
+        var result = await sender.Send(new DependencyInjectionTestRequest(21));
 
         result.Should().Be(42);
     }

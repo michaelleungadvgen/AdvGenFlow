@@ -21,17 +21,16 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddAdvGenFlowBehavior<TBehavior>(
         this IServiceCollection services)
         where TBehavior : class
-    {
-        // Open-generic registration requires the Type overload
-        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(TBehavior));
-        return services;
-    }
+        => services.AddAdvGenFlowBehavior(typeof(TBehavior));
 
     public static IServiceCollection AddAdvGenFlowBehavior(
         this IServiceCollection services,
         Type behaviorType)
     {
-        // Open-generic registration
+        if (!behaviorType.IsGenericTypeDefinition)
+            throw new ArgumentException(
+                $"Type '{behaviorType.Name}' must be an open-generic type definition (e.g. MyBehavior<,>).",
+                nameof(behaviorType));
         services.AddTransient(typeof(IPipelineBehavior<,>), behaviorType);
         return services;
     }
