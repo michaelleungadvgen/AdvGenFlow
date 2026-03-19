@@ -14,6 +14,15 @@ public class EchoHandler : IRequestHandler<EchoRequest, string>
         => Task.FromResult(request.Value);
 }
 
+public class TrackingEchoHandler(Action onHandle) : IRequestHandler<EchoRequest, string>
+{
+    public Task<string> Handle(EchoRequest request, CancellationToken cancellationToken)
+    {
+        onHandle();
+        return Task.FromResult(request.Value);
+    }
+}
+
 public class PrefixBehavior(string prefix, List<string> log) : IPipelineBehavior<EchoRequest, string>
 {
     public async Task<string> Handle(EchoRequest request, RequestHandlerDelegate<string> next,
@@ -33,23 +42,41 @@ public class ShortCircuitBehavior : IPipelineBehavior<EchoRequest, string>
         => Task.FromResult("short-circuited"); // does NOT call next()
 }
 
+public class TokenCapturingBehavior(Action<CancellationToken> capture) : IPipelineBehavior<EchoRequest, string>
+{
+    public Task<string> Handle(EchoRequest request, RequestHandlerDelegate<string> next,
+        CancellationToken cancellationToken)
+    {
+        capture(cancellationToken);
+        return next();
+    }
+}
+
 public class PipelineTests
 {
-    [Fact]
-    public async Task Send_WithBehaviors_ExecutesInRegistrationOrder()
+    private static ISender BuildSender(Action<IServiceCollection>? configure = null)
     {
-        var log = new List<string>();
         var services = new ServiceCollection();
         services.AddTransient<IMediator, Mediator>();
         services.AddTransient<ISender>(sp => sp.GetRequiredService<IMediator>());
         services.AddTransient<IRequestHandler<EchoRequest, string>, EchoHandler>();
-        // B1 registered first → outermost (runs first on entry, last on exit)
-        services.AddTransient<IPipelineBehavior<EchoRequest, string>>(
-            _ => new PrefixBehavior("B1", log));
-        services.AddTransient<IPipelineBehavior<EchoRequest, string>>(
-            _ => new PrefixBehavior("B2", log));
+        configure?.Invoke(services);
+        return services.BuildServiceProvider().GetRequiredService<ISender>();
+    }
 
-        var sender = services.BuildServiceProvider().GetRequiredService<ISender>();
+    [Fact]
+    public async Task Send_WithBehaviors_ExecutesInRegistrationOrder()
+    {
+        var log = new List<string>();
+        var sender = BuildSender(s =>
+        {
+            // B1 registered first → outermost (runs first on entry, last on exit)
+            s.AddTransient<IPipelineBehavior<EchoRequest, string>>(
+                _ => new PrefixBehavior("B1", log));
+            s.AddTransient<IPipelineBehavior<EchoRequest, string>>(
+                _ => new PrefixBehavior("B2", log));
+        });
+
         var result = await sender.Send(new EchoRequest("hello"));
 
         result.Should().Be("hello");
@@ -60,16 +87,36 @@ public class PipelineTests
     [Fact]
     public async Task Send_BehaviorCanShortCircuit()
     {
-        var services = new ServiceCollection();
-        services.AddTransient<IMediator, Mediator>();
-        services.AddTransient<ISender>(sp => sp.GetRequiredService<IMediator>());
-        services.AddTransient<IRequestHandler<EchoRequest, string>, EchoHandler>();
-        services.AddTransient<IPipelineBehavior<EchoRequest, string>>(
-            _ => new ShortCircuitBehavior());
+        bool handlerCalled = false;
+        var sender = BuildSender(s =>
+        {
+            // Override the default EchoHandler with a tracking one
+            s.AddTransient<IRequestHandler<EchoRequest, string>>(
+                _ => new TrackingEchoHandler(() => handlerCalled = true));
+            s.AddTransient<IPipelineBehavior<EchoRequest, string>>(
+                _ => new ShortCircuitBehavior());
+        });
 
-        var sender = services.BuildServiceProvider().GetRequiredService<ISender>();
         var result = await sender.Send(new EchoRequest("ignored"));
 
         result.Should().Be("short-circuited");
+        handlerCalled.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Send_WithBehaviors_PropagatesCancellationTokenThroughPipeline()
+    {
+        CancellationToken capturedToken = default;
+
+        var cts = new CancellationTokenSource();
+        var sender = BuildSender(s =>
+        {
+            s.AddTransient<IPipelineBehavior<EchoRequest, string>>(
+                _ => new TokenCapturingBehavior(ct => capturedToken = ct));
+        });
+
+        await sender.Send(new EchoRequest("test"), cts.Token);
+
+        capturedToken.Should().Be(cts.Token);
     }
 }
