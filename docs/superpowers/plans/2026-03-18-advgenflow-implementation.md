@@ -795,7 +795,13 @@ public Task Publish<TNotification>(TNotification notification,
     where TNotification : INotification
 {
     var handlers = _serviceProvider.GetServices<INotificationHandler<TNotification>>();
-    return Task.WhenAll(handlers.Select(h => h.Handle(notification, cancellationToken)));
+    // Wrap each call: handlers that throw synchronously must be converted to Task.FromException
+    // so that Task.WhenAll can collect all handler results before surfacing failures.
+    return Task.WhenAll(handlers.Select(h =>
+    {
+        try { return h.Handle(notification, cancellationToken); }
+        catch (Exception ex) { return Task.FromException(ex); }
+    }));
 }
 ```
 
