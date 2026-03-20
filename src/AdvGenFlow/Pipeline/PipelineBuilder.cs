@@ -1,6 +1,6 @@
 namespace AdvGenFlow;
 
-internal static class PipelineBuilder
+public static class PipelineBuilder
 {
     public static Task<TResponse> Build<TRequest, TResponse>(
         RequestHandlerDelegate<TResponse> handler,
