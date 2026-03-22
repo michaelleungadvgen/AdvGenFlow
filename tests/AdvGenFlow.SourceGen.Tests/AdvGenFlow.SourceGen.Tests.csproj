@@ -14,7 +14,9 @@
     <PackageReference Include="Verify.SourceGenerators" Version="*" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.*" />
     <ProjectReference Include="../../src/AdvGenFlow/AdvGenFlow.csproj" />
-    <!-- Load SourceGen as a Roslyn analyzer/generator AND expose its types for test code -->
+    <!-- OutputItemType="Analyzer" loads the generator at compile time;
+         ReferenceOutputAssembly="true" lets test code instantiate MediatorDispatchGenerator directly.
+         Standard generator testing uses false, but true is required here for CSharpGeneratorDriver.Create(new MediatorDispatchGenerator()). -->
     <ProjectReference Include="../../src/AdvGenFlow.SourceGen/AdvGenFlow.SourceGen.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="true" />
   </ItemGroup>
 </Project>

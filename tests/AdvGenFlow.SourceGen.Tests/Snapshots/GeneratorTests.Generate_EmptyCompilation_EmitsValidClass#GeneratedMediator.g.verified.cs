@@ -22,7 +22,6 @@ internal sealed class GeneratedMediator : IMediator
         {
             _ => throw new InvalidOperationException($"No handler registered for {request.GetType().Name}")
         };
-
     }
 
     public Task Publish<TNotification>(TNotification notification,

@@ -4,6 +4,7 @@ using VerifyXunit;
 
 namespace AdvGenFlow.SourceGen.Tests;
 
+// [UsesVerify] is not needed with Verify.Xunit v6+ — attribute was deprecated
 public class GeneratorTests
 {
     private static Compilation CreateCompilation(string source)
