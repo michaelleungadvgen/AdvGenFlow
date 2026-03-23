@@ -1,7 +1,7 @@
 # AdvGenFlow Design Spec
 
 **Date:** 2026-03-18
-**Status:** Draft
+**Status:** Approved
 **Target:** net9.0
 
 ---
